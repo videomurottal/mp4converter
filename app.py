@@ -1,28 +1,30 @@
-from flask import Flask, request, send_file
-import os, subprocess, uuid
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse
+import subprocess, uuid, os
+import requests
 
-app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app = FastAPI()
 
-@app.route('/')
-def index():
-    return '🚀 FFMPEG server running!'
+@app.get("/")
+def home():
+    return {"status": "ready", "usage": "/convert?video=URL&audio=URL"}
 
-@app.route('/convert', methods=['POST'])
-def convert():
-    file = request.files['video']
-    if not file.filename.endswith('.webm'):
-        return 'Invalid file type', 400
+@app.get("/convert")
+def convert(video: str, audio: str):
+    os.makedirs("temp", exist_ok=True)
+    id = str(uuid.uuid4())
+    video_path = f"temp/{id}.webm"
+    audio_path = f"temp/{id}.mp3"
+    output_path = f"temp/{id}.mp4"
 
-    input_path = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}.webm")
-    output_path = input_path.replace('.webm', '.mp4')
-    file.save(input_path)
+    with open(video_path, "wb") as f:
+        f.write(requests.get(video).content)
+    with open(audio_path, "wb") as f:
+        f.write(requests.get(audio).content)
 
     subprocess.run([
-        'ffmpeg', '-y', '-i', input_path,
-        '-c:v', 'libx264', '-c:a', 'aac', '-strict', 'experimental',
-        output_path
-    ])
+        "ffmpeg", "-i", video_path, "-i", audio_path,
+        "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", output_path
+    ], check=True)
 
-    return send_file(output_path, as_attachment=True)
+    return FileResponse(output_path, media_type="video/mp4", filename="result.mp4")
