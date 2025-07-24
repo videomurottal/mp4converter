@@ -1,21 +1,22 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
-import shutil
-import os
-import uuid
+import subprocess
 
 app = FastAPI()
 
+@app.get("/")
+def home():
+    return {"message": "FastAPI WebM to MP4 converter is running"}
+
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    webm_path = f"temp_{uuid.uuid4()}.webm"
-    mp4_path = webm_path.replace(".webm", ".mp4")
+    input_path = "input.webm"
+    output_path = "output.mp4"
 
-    with open(webm_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    with open(input_path, "wb") as f:
+        f.write(await file.read())
 
-    # Convert to MP4 using ffmpeg
-    os.system(f"ffmpeg -i {webm_path} -c:v libx264 -preset fast -crf 22 -c:a aac -b:a 128k {mp4_path}")
+    # Jalankan ffmpeg
+    subprocess.run(["ffmpeg", "-y", "-i", input_path, "-c:v", "libx264", output_path])
 
-    os.remove(webm_path)
-    return FileResponse(mp4_path, media_type="video/mp4", filename=os.path.basename(mp4_path))
+    return FileResponse(output_path, media_type="video/mp4", filename="converted.mp4")
