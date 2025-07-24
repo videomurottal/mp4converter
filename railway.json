@@ -1,5 +1,0 @@
-{
-  "build": {
-    "nixpacksConfigPath": "install.sh"
-  }
-}
