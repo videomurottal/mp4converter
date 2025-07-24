@@ -1,5 +1,7 @@
-# MP4 Converter API
+# WebM to MP4 Converter
 
-Endpoint:
-- `POST /upload`: upload WebM, return MP4 URL
-- `GET /download/{filename}`: download hasil MP4
+## Endpoint
+POST `/upload` dengan field `file` (WebM)
+
+## Response
+MP4 file hasil konversi
