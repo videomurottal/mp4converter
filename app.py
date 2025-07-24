@@ -1,22 +1,26 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 import subprocess
+import uuid
+import os
 
 app = FastAPI()
-
-@app.get("/")
-def home():
-    return {"message": "FastAPI WebM to MP4 converter is running"}
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-    input_path = "input.webm"
-    output_path = "output.mp4"
+    temp_input = f"temp_{uuid.uuid4()}.webm"
+    temp_output = temp_input.replace(".webm", ".mp4")
 
-    with open(input_path, "wb") as f:
+    with open(temp_input, "wb") as f:
         f.write(await file.read())
 
-    # Jalankan ffmpeg
-    subprocess.run(["ffmpeg", "-y", "-i", input_path, "-c:v", "libx264", output_path])
+    try:
+        subprocess.run(["ffmpeg", "-i", temp_input, "-c:v", "libx264", "-c:a", "aac", "-strict", "experimental", temp_output], check=True)
+    except subprocess.CalledProcessError:
+        return {"error": "Conversion failed"}
+    finally:
+        os.remove(temp_input)
 
-    return FileResponse(output_path, media_type="video/mp4", filename="converted.mp4")
+    return FileResponse(temp_output, media_type="video/mp4", filename=temp_output)
