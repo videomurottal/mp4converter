@@ -1,7 +1,5 @@
 {
   "build": {
-    "env": {
-      "FFMPEG_PATH": "/usr/bin/ffmpeg"
-    }
+    "nixpacksConfigPath": "install.sh"
   }
 }
