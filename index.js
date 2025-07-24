@@ -1,24 +1,31 @@
 import express from 'express';
 import cors from 'cors';
-import multer from 'multer';
 import fetch from 'node-fetch';
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
 const app = express();
-const upload = multer({ dest: 'uploads/' });
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
 
-app.post('/generate', upload.single('poster'), async (req, res) => {
+app.post('/generate', async (req, res) => {
   try {
-    const { audioUrl } = req.body;
-    const posterPath = req.file.path;
-    const audioPath = `uploads/audio.mp3`;
-    const outputPath = `uploads/output.mp4`;
+    const { posterUrl, audioUrl } = req.body;
+    if (!posterUrl || !audioUrl) throw new Error('posterUrl dan audioUrl wajib dikirim');
+
+    const posterPath = `downloads/poster.png`;
+    const audioPath = `downloads/audio.mp3`;
+    const outputPath = `downloads/output.mp4`;
+    fs.mkdirSync('downloads', { recursive: true });
+
+    // Download poster
+    const posterRes = await fetch(posterUrl);
+    if (!posterRes.ok) throw new Error('Gagal unduh poster');
+    const posterBuffer = await posterRes.arrayBuffer();
+    fs.writeFileSync(posterPath, Buffer.from(posterBuffer));
 
     // Download audio
     const audioRes = await fetch(audioUrl);
@@ -45,4 +52,4 @@ app.post('/generate', upload.single('poster'), async (req, res) => {
   }
 });
 
-app.listen(PORT, () => console.log(`Server mp4converter jalan di port ${PORT}`));
+app.listen(PORT, () => console.log(`Server mp4converter (URL mode) jalan di port ${PORT}`));
