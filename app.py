@@ -1,25 +1,21 @@
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
-import uuid, os, subprocess
+import shutil
+import os
+import uuid
 
 app = FastAPI()
 
 @app.post("/upload")
-async def upload(file: UploadFile):
-    temp_webm = f"/tmp/{uuid.uuid4()}.webm"
-    temp_mp4 = temp_webm.replace(".webm", ".mp4")
+async def upload(file: UploadFile = File(...)):
+    webm_path = f"temp_{uuid.uuid4()}.webm"
+    mp4_path = webm_path.replace(".webm", ".mp4")
 
-    with open(temp_webm, "wb") as f:
-        f.write(await file.read())
+    with open(webm_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
 
-    subprocess.run([
-        "ffmpeg", "-i", temp_webm,
-        "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p",
-        temp_mp4
-    ])
+    # Convert to MP4 using ffmpeg
+    os.system(f"ffmpeg -i {webm_path} -c:v libx264 -preset fast -crf 22 -c:a aac -b:a 128k {mp4_path}")
 
-    return {"url": f"/download/{os.path.basename(temp_mp4)}"}
-
-@app.get("/download/{filename}")
-async def download(filename: str):
-    return FileResponse(f"/tmp/{filename}", media_type="video/mp4", filename=filename)
+    os.remove(webm_path)
+    return FileResponse(mp4_path, media_type="video/mp4", filename=os.path.basename(mp4_path))
