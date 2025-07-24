@@ -1,11 +1,7 @@
 {
   "build": {
-    "nixpacksPlan": {
-      "phases": {
-        "install": {
-          "cmds": ["bash install.sh"]
-        }
-      }
+    "env": {
+      "FFMPEG_PATH": "/usr/bin/ffmpeg"
     }
   }
 }
