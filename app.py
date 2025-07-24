@@ -1,30 +1,25 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, UploadFile
 from fastapi.responses import FileResponse
-import subprocess, uuid, os
-import requests
+import uuid, os, subprocess
 
 app = FastAPI()
 
-@app.get("/")
-def home():
-    return {"status": "ready", "usage": "/convert?video=URL&audio=URL"}
+@app.post("/upload")
+async def upload(file: UploadFile):
+    temp_webm = f"/tmp/{uuid.uuid4()}.webm"
+    temp_mp4 = temp_webm.replace(".webm", ".mp4")
 
-@app.get("/convert")
-def convert(video: str, audio: str):
-    os.makedirs("temp", exist_ok=True)
-    id = str(uuid.uuid4())
-    video_path = f"temp/{id}.webm"
-    audio_path = f"temp/{id}.mp3"
-    output_path = f"temp/{id}.mp4"
-
-    with open(video_path, "wb") as f:
-        f.write(requests.get(video).content)
-    with open(audio_path, "wb") as f:
-        f.write(requests.get(audio).content)
+    with open(temp_webm, "wb") as f:
+        f.write(await file.read())
 
     subprocess.run([
-        "ffmpeg", "-i", video_path, "-i", audio_path,
-        "-c:v", "copy", "-c:a", "aac", "-strict", "experimental", output_path
-    ], check=True)
+        "ffmpeg", "-i", temp_webm,
+        "-c:v", "libx264", "-preset", "fast", "-pix_fmt", "yuv420p",
+        temp_mp4
+    ])
 
-    return FileResponse(output_path, media_type="video/mp4", filename="result.mp4")
+    return {"url": f"/download/{os.path.basename(temp_mp4)}"}
+
+@app.get("/download/{filename}")
+async def download(filename: str):
+    return FileResponse(f"/tmp/{filename}", media_type="video/mp4", filename=filename)
