@@ -1,0 +1,5 @@
+{
+  "deploy": {
+    "startCommand": "./install.sh && gunicorn app:app"
+  }
+}
