@@ -1,13 +1,36 @@
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
+import subprocess
+import os
+import uuid
+
+app = FastAPI()
+
 @app.post("/upload")
-async def upload(file: UploadFile = File(...)):
-    # Simpan file sementara
-    temp_input = "temp_input.webm"
-    temp_output = "output.mp4"
-    with open(temp_input, "wb") as f:
+async def convert_webm_to_mp4(file: UploadFile = File(...)):
+    input_filename = f"/tmp/{uuid.uuid4()}.webm"
+    output_filename = f"/tmp/{uuid.uuid4()}.mp4"
+
+    with open(input_filename, "wb") as f:
         f.write(await file.read())
 
-    # Konversi dengan ffmpeg
-    cmd = f"ffmpeg -y -i {temp_input} -c:v libx264 -c:a aac -strict experimental {temp_output}"
-    subprocess.run(cmd.split(), check=True)
+    command = [
+        "ffmpeg",
+        "-i", input_filename,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "23",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        output_filename
+    ]
 
-    return FileResponse(temp_output, media_type="video/mp4", filename="converted.mp4")
+    result = subprocess.run(command, capture_output=True)
+    if result.returncode != 0:
+        return {"error": "Conversion failed", "detail": result.stderr.decode()}
+
+    def iterfile():
+        with open(output_filename, mode="rb") as f:
+            yield from f
+
+    return StreamingResponse(iterfile(), media_type="video/mp4")
