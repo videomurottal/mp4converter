@@ -1,2 +1,2 @@
 #!/bin/bash
-apt-get update && apt-get install -y ffmpeg
+apt update && apt install -y ffmpeg
